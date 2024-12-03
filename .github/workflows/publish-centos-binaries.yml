@@ -18,11 +18,16 @@ jobs:
     container:
       image: centos:7.9.2009
     steps:
+    - name: Install Node.js and git
+      run: |
+        curl -sL https://rpm.nodesource.com/setup_16.x | bash -
+        yum install -y nodejs git
+        
     - uses: actions/checkout@v3
       with:
         ref: ${{ github.event.inputs.version || github.ref }}
     
-    - name: Install dependencies
+    - name: Install build dependencies
       run: |
         yum group install -y "Development Tools"
         yum install -y curl centos-release-scl
