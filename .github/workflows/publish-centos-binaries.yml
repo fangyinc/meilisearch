@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to build (e.g., v1.2.3)'
+        description: 'Version tag to build (e.g., v1.11.3)'
         required: false
         type: string
   push:
@@ -15,33 +15,57 @@ jobs:
   build-centos7:
     name: Build binary for CentOS 7.9
     runs-on: ubuntu-latest
-    container:
-      image: centos:7.9.2009
     steps:
-    - name: Install Node.js and git
-      run: |
-        curl -sL https://rpm.nodesource.com/setup_16.x | bash -
-        yum install -y nodejs git
-        
     - uses: actions/checkout@v3
       with:
         ref: ${{ github.event.inputs.version || github.ref }}
+        fetch-depth: 0
+        fetch-tags: true
     
-    - name: Install build dependencies
+    # 使用 quay.io/centos/centos:7 作为构建环境
+    - name: Build in CentOS 7 Docker
       run: |
+        # 创建构建脚本
+        cat > build.sh << 'EOL'
+        #!/bin/bash
+        set -e
+
+        # 安装构建所需工具
         yum group install -y "Development Tools"
         yum install -y curl centos-release-scl
         yum install -y devtoolset-9
-        
-    - name: Setup Rust toolchain
-      uses: dtolnay/rust-toolchain@1.79
-      
-    - name: Build with CentOS 7.9 toolchain
-      run: |
-        # Enable devtoolset-9 for modern GCC
+
+        # 安装 Rust
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.79.0
+        source $HOME/.cargo/env
+
+        # 启用 devtoolset-9 获取较新的编译器
         source /opt/rh/devtoolset-9/enable
-        # Build with specific target to ensure compatibility
+
+        # 构建
+        cd /work
         cargo build --release --locked --target x86_64-unknown-linux-gnu
+
+        # 确保构建产物属于 runner 用户
+        chown -R 1001:1001 target/
+        EOL
+
+        # 设置脚本权限
+        chmod +x build.sh
+
+        # 在 CentOS 7 容器中运行构建
+        docker run --rm \
+          -v $(pwd):/work \
+          -w /work \
+          quay.io/centos/centos:7 \
+          ./build.sh
+
+    - name: Check binary compatibility
+      run: |
+        echo "Checking glibc requirements:"
+        ldd target/x86_64-unknown-linux-gnu/release/meilisearch || true
+        echo "Checking symbol versions:"
+        readelf -V target/x86_64-unknown-linux-gnu/release/meilisearch || true
         
     - name: Upload build artifact
       uses: actions/upload-artifact@v3
