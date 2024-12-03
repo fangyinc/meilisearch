@@ -1,0 +1,46 @@
+name: Build CentOS 7.9 binary
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (e.g., v1.2.3)'
+        required: false
+        type: string
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-centos7:
+    name: Build binary for CentOS 7.9
+    runs-on: ubuntu-latest
+    container:
+      image: centos:7.9.2009
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        ref: ${{ github.event.inputs.version || github.ref }}
+    
+    - name: Install dependencies
+      run: |
+        yum group install -y "Development Tools"
+        yum install -y curl centos-release-scl
+        yum install -y devtoolset-9
+        
+    - name: Setup Rust toolchain
+      uses: dtolnay/rust-toolchain@1.79
+      
+    - name: Build with CentOS 7.9 toolchain
+      run: |
+        # Enable devtoolset-9 for modern GCC
+        source /opt/rh/devtoolset-9/enable
+        # Build with specific target to ensure compatibility
+        cargo build --release --locked --target x86_64-unknown-linux-gnu
+        
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: meilisearch-linux-centos7-amd64
+        path: target/x86_64-unknown-linux-gnu/release/meilisearch
+        if-no-files-found: error
