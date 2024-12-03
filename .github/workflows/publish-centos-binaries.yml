@@ -29,36 +29,13 @@ jobs:
         #!/bin/bash
         set -ex
 
-        # 备份并移除默认的 repo 文件
+        # 备份原有的 repo 文件
         mkdir -p /etc/yum.repos.d/backup
-        mv /etc/yum.repos.d/*.repo /etc/yum.repos.d/backup/ 2>/dev/null || true
+        mv /etc/yum.repos.d/*.repo /etc/yum.repos.d/backup/
 
-        # 创建新的 repo 配置文件
-        cat > /etc/yum.repos.d/centos-vault.repo << 'EOF'
-        [base]
-        name=CentOS-7.9.2009 - Base
-        baseurl=https://vault.centos.org/7.9.2009/os/$basearch/
-        gpgcheck=0
-        enabled=1
-
-        [updates]
-        name=CentOS-7.9.2009 - Updates
-        baseurl=https://vault.centos.org/7.9.2009/updates/$basearch/
-        gpgcheck=0
-        enabled=1
-
-        [extras]
-        name=CentOS-7.9.2009 - Extras
-        baseurl=https://vault.centos.org/7.9.2009/extras/$basearch/
-        gpgcheck=0
-        enabled=1
-
-        [sclo-rh]
-        name=CentOS-7.9.2009 - SCLo rh
-        baseurl=https://vault.centos.org/7.9.2009/sclo/$basearch/rh/
-        gpgcheck=0
-        enabled=1
-        EOF
+        # 下载阿里云的 repo 文件
+        curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
+        curl -o /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
 
         # 清理并更新 yum 缓存
         yum clean all
@@ -66,10 +43,9 @@ jobs:
         yum makecache
 
         # 安装构建所需工具
-        yum update -y
         yum group install -y "Development Tools"
-        yum install -y curl
-        yum install -y devtoolset-9 --enablerepo=sclo-rh
+        yum install -y curl centos-release-scl
+        yum install -y devtoolset-9
 
         # 安装 Rust
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.79.0
