@@ -33,9 +33,24 @@ jobs:
         mkdir -p /etc/yum.repos.d/backup
         mv /etc/yum.repos.d/*.repo /etc/yum.repos.d/backup/
 
-        # 下载阿里云的 repo 文件
+        # 配置阿里云源
         curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
         curl -o /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
+
+        # 配置 SCL 源
+        cat > /etc/yum.repos.d/CentOS-SCLo-scl.repo << 'EOF'
+        [centos-sclo-sclo]
+        name=CentOS-7 - SCLo sclo
+        baseurl=http://mirrors.aliyun.com/centos/7/sclo/$basearch/sclo/
+        gpgcheck=0
+        enabled=1
+
+        [centos-sclo-rh]
+        name=CentOS-7 - SCLo rh
+        baseurl=http://mirrors.aliyun.com/centos/7/sclo/$basearch/rh/
+        gpgcheck=0
+        enabled=1
+        EOF
 
         # 清理并更新 yum 缓存
         yum clean all
@@ -43,8 +58,7 @@ jobs:
         yum makecache
 
         # 安装构建所需工具
-        yum group install -y "Development Tools"
-        yum install -y curl centos-release-scl
+        yum install -y which make gcc gcc-c++ wget
         yum install -y devtoolset-9
 
         # 安装 Rust
