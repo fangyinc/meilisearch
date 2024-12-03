@@ -29,7 +29,7 @@ jobs:
         #!/bin/bash
         set -e
 
-        # 配置 vault.centos.org 镜像源
+        # 配置基础仓库
         cat > /etc/yum.repos.d/CentOS-Base.repo << 'EOF'
         [base]
         name=CentOS-$releasever - Base
@@ -50,9 +50,26 @@ jobs:
         gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
         EOF
 
+        # 配置 SCL 仓库
+        cat > /etc/yum.repos.d/CentOS-SCLo-scl.repo << 'EOF'
+        [centos-sclo-sclo]
+        name=CentOS-7 - SCLo sclo
+        baseurl=https://vault.centos.org/7.9.2009/sclo/$basearch/sclo/
+        gpgcheck=1
+        enabled=1
+        gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-SCLo
+
+        [centos-sclo-rh]
+        name=CentOS-7 - SCLo rh
+        baseurl=https://vault.centos.org/7.9.2009/sclo/$basearch/rh/
+        gpgcheck=1
+        enabled=1
+        gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-SCLo
+        EOF
+
         # 清理并更新 yum 缓存
         yum clean all
-        yum makecache
+        yum makecache fast
 
         # 安装构建所需工具
         yum group install -y "Development Tools"
